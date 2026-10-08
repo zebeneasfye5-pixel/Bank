@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#d97706" />
+      <stop offset="100%" stop-color="#78350f" />
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="128" fill="url(#bg)"/>
+  <!-- Gold Shield / Bank Emblem -->
+  <path d="M256 96 L384 150 V260 C384 340 256 416 256 416 C256 416 128 340 128 260 V150 Z" fill="#ffffff" opacity="0.15"/>
+  <!-- Currency / Birr Letter 'B' & Building icon in white -->
+  <path d="M256 140 L350 190 V210 H162 V190 Z" fill="#ffffff"/>
+  <rect x="180" y="225" width="24" height="90" rx="6" fill="#ffffff"/>
+  <rect x="244" y="225" width="24" height="90" rx="6" fill="#ffffff"/>
+  <rect x="308" y="225" width="24" height="90" rx="6" fill="#ffffff"/>
+  <rect x="160" y="325" width="192" height="24" rx="6" fill="#ffffff"/>
+  <!-- Checkmark badge -->
+  <circle cx="340" cy="340" r="36" fill="#10b981"/>
+  <path d="M328 340 L336 348 L354 330" stroke="#ffffff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+</svg>

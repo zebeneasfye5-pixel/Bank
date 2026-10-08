@@ -1,0 +1,6 @@
+{
+  "name": "BirrFlow - Financial & Banking Dashboard",
+  "description": "የግል እና የንግድ ፋይናንስ አስተዳደር፣ የገንዘብ እንቅስቃሴ እና የቁጠባ መቆጣጠሪያ ዳሽቦርድ (Personal & Business Finance Management Dashboard)",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,1976 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+import React, { useState, useMemo, useEffect } from 'react';
+import {
+  Wallet,
+  ArrowUpRight,
+  ArrowDownLeft,
+  ArrowLeftRight,
+  PlusCircle,
+  Eye,
+  EyeOff,
+  Search,
+  ShieldCheck,
+  Building2,
+  CheckCircle2,
+  FileText,
+  DollarSign,
+  PieChart,
+  Lock,
+  Smartphone,
+  CreditCard,
+  Printer,
+  X,
+  Share2,
+  RefreshCw,
+  TrendingUp,
+  Upload,
+  Sliders,
+  Zap,
+  Download,
+  Globe,
+  ExternalLink,
+  Sparkles,
+  AlertCircle,
+  Copy,
+  Check
+} from 'lucide-react';
+import { Account, BudgetCategory, Contact, Language, Transaction, TransactionType } from './types';
+import { INITIAL_ACCOUNTS, INITIAL_BUDGETS, INITIAL_CONTACTS, INITIAL_TRANSACTIONS } from './data';
+
+interface BeforeInstallPromptEvent extends Event {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
+}
+
+const LIVE_DEPLOYED_URL = 'https://ais-pre-wymcjnbltm7zo2x3a5rv4a-125744783365.europe-west1.run.app';
+
+export default function App() {
+  const [lang, setLang] = useState<Language>('am');
+  const [showBalances, setShowBalances] = useState<boolean>(true);
+
+  // Persistent Accounts in localStorage
+  const [accounts, setAccounts] = useState<Account[]>(() => {
+    try {
+      const saved = localStorage.getItem('birrflow_accounts');
+      return saved ? JSON.parse(saved) : INITIAL_ACCOUNTS;
+    } catch {
+      return INITIAL_ACCOUNTS;
+    }
+  });
+
+  // Persistent Transactions in localStorage
+  const [transactions, setTransactions] = useState<Transaction[]>(() => {
+    try {
+      const saved = localStorage.getItem('birrflow_transactions');
+      return saved ? JSON.parse(saved) : INITIAL_TRANSACTIONS;
+    } catch {
+      return INITIAL_TRANSACTIONS;
+    }
+  });
+
+  const [budgets] = useState<BudgetCategory[]>(INITIAL_BUDGETS);
+  const [contacts] = useState<Contact[]>(INITIAL_CONTACTS);
+
+  // Save to localStorage whenever accounts or transactions change
+  useEffect(() => {
+    try {
+      localStorage.setItem('birrflow_accounts', JSON.stringify(accounts));
+    } catch (e) {
+      console.error(e);
+    }
+  }, [accounts]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('birrflow_transactions', JSON.stringify(transactions));
+    } catch (e) {
+      console.error(e);
+    }
+  }, [transactions]);
+
+  // PWA Install Prompt State
+  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [isInstallModalOpen, setIsInstallModalOpen] = useState(false);
+  const [isCopiedUrl, setIsCopiedUrl] = useState(false);
+
+  useEffect(() => {
+    const handleBeforeInstall = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e as BeforeInstallPromptEvent);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstall);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
+    };
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (deferredPrompt) {
+      try {
+        await deferredPrompt.prompt();
+        const choice = await deferredPrompt.userChoice;
+        if (choice.outcome === 'accepted') {
+          showToast(
+            lang === 'am'
+              ? 'መተግበሪያው በተሳካ ሁኔታ ስልክዎ/ኮምፒውተርዎ ላይ ተጭኗል!'
+              : 'App successfully installed on your device!'
+          );
+        }
+        setDeferredPrompt(null);
+        return;
+      } catch (err) {
+        console.log(err);
+      }
+    }
+    setIsInstallModalOpen(true);
+  };
+
+  const handleDownloadAppFile = () => {
+    const htmlContent = `<!DOCTYPE html>
+<html lang="am">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>BirrFlow - Dashen Bank Live App</title>
+  <meta http-equiv="refresh" content="0; url=${LIVE_DEPLOYED_URL}">
+  <style>
+    body { font-family: system-ui, -apple-system, sans-serif; background: #020617; color: white; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; text-align: center; }
+    .card { background: #0f172a; padding: 32px; border-radius: 24px; border: 1px solid #1e293b; max-width: 400px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5); }
+    h2 { color: #f59e0b; margin-top: 0; }
+    a { color: #020617; background: #f59e0b; font-weight: bold; font-size: 16px; text-decoration: none; padding: 14px 28px; border-radius: 12px; display: inline-block; margin-top: 20px; transition: background 0.2s; }
+    a:hover { background: #d97706; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2>BirrFlow Live App</h2>
+    <p>የዳሽን ባንክ የቀጥታ ገንዘብ እና የፋይናንስ መቆጣጠሪያ መተግበሪያን በመክፈት ላይ...</p>
+    <a href="${LIVE_DEPLOYED_URL}">መተግበሪያውን አሁን ክፈት (Open App)</a>
+  </div>
+  <script>
+    window.location.replace("${LIVE_DEPLOYED_URL}");
+  </script>
+</body>
+</html>`;
+
+    const blob = new Blob([htmlContent], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'BirrFlow_Bank_App.html';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast(
+      lang === 'am'
+        ? 'የመተግበሪያው ፋይል (BirrFlow_Bank_App.html) ወርዷል!'
+        : 'App launcher file downloaded successfully!'
+    );
+  };
+
+  const handleCopyAppUrl = () => {
+    navigator.clipboard.writeText(LIVE_DEPLOYED_URL);
+    setIsCopiedUrl(true);
+    showToast(lang === 'am' ? 'የመተግበሪያው የቀጥታ ሊንክ ኮፒ ተደርጓል!' : 'Direct App URL copied to clipboard!');
+    setTimeout(() => setIsCopiedUrl(false), 3000);
+  };
+
+  // Live Sync & Simulation State
+  const [lastSyncTime, setLastSyncTime] = useState<string>('አሁን (Just now)');
+  const [isSyncing, setIsSyncing] = useState<boolean>(false);
+  const [timeRange, setTimeRange] = useState<'all' | 'today' | 'week' | 'month'>('month');
+
+  // Filter state
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'analytics' | 'transactions' | 'security'>('dashboard');
+  const [filterType, setFilterType] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState<string>('');
+
+  // Modals state
+  const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
+  const [isAddTxModalOpen, setIsAddTxModalOpen] = useState(false);
+  const [isSetBalanceModalOpen, setIsSetBalanceModalOpen] = useState(false);
+  const [isImportStatementModalOpen, setIsImportStatementModalOpen] = useState(false);
+  const [selectedReceipt, setSelectedReceipt] = useState<Transaction | null>(null);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Balance Override Form
+  const [targetAccountId, setTargetAccountId] = useState<string>(accounts[0]?.id || '');
+  const [newBalanceInput, setNewBalanceInput] = useState<string>('');
+
+  // Transfer Form State
+  const [transferFrom, setTransferFrom] = useState<string>(accounts[0]?.id || '');
+  const [transferBank, setTransferBank] = useState<string>('Dashen Bank');
+  const [transferRecipientAcc, setTransferRecipientAcc] = useState<string>('');
+  const [transferRecipientName, setTransferRecipientName] = useState<string>('');
+  const [transferAmount, setTransferAmount] = useState<string>('');
+  const [transferNote, setTransferNote] = useState<string>('');
+  const [transferPin, setTransferPin] = useState<string>('');
+  const [transferError, setTransferError] = useState<string>('');
+
+  // Add Custom Transaction State
+  const [newTxType, setNewTxType] = useState<TransactionType>('income');
+  const [newTxAccount, setNewTxAccount] = useState<string>(accounts[0]?.id || '');
+  const [newTxTitle, setNewTxTitle] = useState<string>('');
+  const [newTxAmount, setNewTxAmount] = useState<string>('');
+  const [newTxCategory, setNewTxCategory] = useState<string>('General');
+
+  // Statement Import State
+  const [statementText, setStatementText] = useState<string>('');
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 4000);
+  };
+
+  useEffect(() => {
+    const updateTime = () => {
+      const now = new Date();
+      setLastSyncTime(
+        `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`
+      );
+    };
+
+    updateTime();
+    const interval = setInterval(updateTime, 10000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleManualSync = () => {
+    setIsSyncing(true);
+    setTimeout(() => {
+      setIsSyncing(false);
+      const now = new Date();
+      setLastSyncTime(
+        `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`
+      );
+      showToast(
+        lang === 'am'
+          ? 'የዳሽን ባንክ እና የሁሉም ሂሳቦች እንቅስቃሴ በቀጥታ ተመሳስሏል!'
+          : 'Live bank balances and transactions refreshed successfully!'
+      );
+    }, 600);
+  };
+
+  const totalBalance = useMemo(() => {
+    return accounts.reduce((acc, curr) => acc + curr.balance, 0);
+  }, [accounts]);
+
+  const dashenAccount = useMemo(() => {
+    return accounts.find((a) => a.id === 'acc-1') || accounts[0];
+  }, [accounts]);
+
+  const totalIncome = useMemo(() => {
+    return transactions
+      .filter((t) => t.type === 'income')
+      .reduce((sum, t) => sum + t.amount, 0);
+  }, [transactions]);
+
+  const totalExpense = useMemo(() => {
+    return transactions
+      .filter((t) => t.type === 'expense' || t.type === 'bill')
+      .reduce((sum, t) => sum + t.amount, 0);
+  }, [transactions]);
+
+  const netCashFlow = totalIncome - totalExpense;
+
+  const filteredTransactions = useMemo(() => {
+    return transactions.filter((tx) => {
+      const matchesType = filterType === 'all' || tx.type === filterType;
+      const title = lang === 'am' ? tx.titleAm : tx.title;
+      const category = lang === 'am' ? tx.categoryAm : tx.category;
+      const query = searchQuery.toLowerCase();
+      const matchesSearch =
+        title.toLowerCase().includes(query) ||
+        category.toLowerCase().includes(query) ||
+        tx.referenceNo.toLowerCase().includes(query) ||
+        (tx.recipientName && tx.recipientName.toLowerCase().includes(query));
+      return matchesType && matchesSearch;
+    });
+  }, [transactions, filterType, searchQuery, lang]);
+
+  const formatMoney = (amount: number, currency: string = 'ETB') => {
+    if (!showBalances) return '••••••';
+    return `${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${
+      currency === 'ETB' ? (lang === 'am' ? 'ብር' : 'ETB') : currency
+    }`;
+  };
+
+  const handleSelectContact = (contact: Contact) => {
+    setTransferRecipientName(contact.name);
+    setTransferRecipientAcc(contact.accountNumber);
+    setTransferBank(contact.bank);
+  };
+
+  const handleUpdateDirectBalance = (e: React.FormEvent) => {
+    e.preventDefault();
+    const newBal = parseFloat(newBalanceInput);
+    if (isNaN(newBal) || newBal < 0) {
+      showToast(lang === 'am' ? 'እባክዎ ትክክለኛ የብር መጠን ያስገቡ' : 'Please enter valid balance amount');
+      return;
+    }
+
+    const currentAcc = accounts.find((a) => a.id === targetAccountId);
+    const oldBalance = currentAcc ? currentAcc.balance : 0;
+    const diff = newBal - oldBalance;
+
+    setAccounts((prev) =>
+      prev.map((acc) => (acc.id === targetAccountId ? { ...acc, balance: newBal } : acc))
+    );
+
+    if (diff !== 0) {
+      const ref = `REC-BAL-${Math.floor(100000 + Math.random() * 900000)}`;
+      const reconTx: Transaction = {
+        id: `tx-recon-${Date.now()}`,
+        type: diff > 0 ? 'income' : 'expense',
+        title: `Direct Balance Adjustment (${Math.abs(diff).toLocaleString()} ETB)`,
+        titleAm: `የቀጥታ ሂሳብ ማስተካከያ (${Math.abs(diff).toLocaleString()} ብር)`,
+        amount: Math.abs(diff),
+        currency: 'ETB',
+        date: new Date().toISOString().replace('T', ' ').slice(0, 16),
+        category: 'Balance Reconciliation',
+        categoryAm: 'የቀጥታ ሂሳብ ማስተካከያ',
+        fromAccountId: targetAccountId,
+        status: 'completed',
+        referenceNo: ref,
+        note: `Manual balance updated from ${oldBalance.toLocaleString()} to ${newBal.toLocaleString()} ETB`,
+      };
+      setTransactions((prev) => [reconTx, ...prev]);
+    }
+
+    setIsSetBalanceModalOpen(false);
+    setNewBalanceInput('');
+    showToast(
+      lang === 'am'
+        ? `የባንክ ሂሳቡ በቀጥታ ወደ ${newBal.toLocaleString()} ብር ተስተካክሏል!`
+        : `Live balance successfully adjusted to ${newBal.toLocaleString()} ETB!`
+    );
+  };
+
+  const handleExecuteTransfer = (e: React.FormEvent) => {
+    e.preventDefault();
+    setTransferError('');
+
+    const amountNum = parseFloat(transferAmount);
+    if (isNaN(amountNum) || amountNum <= 0) {
+      setTransferError(lang === 'am' ? 'እባክዎ ትክክለኛ የገንዘብ መጠን ያስገቡ።' : 'Please enter a valid transfer amount.');
+      return;
+    }
+
+    const sourceAccount = accounts.find((a) => a.id === transferFrom);
+    if (!sourceAccount) {
+      setTransferError(lang === 'am' ? 'እባክዎ መነሻ ሂሳብ ይምረጡ።' : 'Please select a source account.');
+      return;
+    }
+
+    if (sourceAccount.balance < amountNum) {
+      setTransferError(
+        lang === 'am'
+          ? `በቂ ቀሪ ሂሳብ የለም። አሁን ያለው፦ ${sourceAccount.balance.toLocaleString()} ብር`
+          : `Insufficient funds. Current balance: ${sourceAccount.balance.toLocaleString()} ETB`
+      );
+      return;
+    }
+
+    if (!transferRecipientAcc.trim()) {
+      setTransferError(lang === 'am' ? 'የተቀባይ አካውንት ቁጥር ያስገቡ።' : 'Enter recipient account number.');
+      return;
+    }
+
+    if (transferPin.length < 4) {
+      setTransferError(lang === 'am' ? 'እባክዎ 4 አሃዝ ሚስጥር ቁጥር (PIN) ያስገቡ።' : 'Please enter 4-digit security PIN.');
+      return;
+    }
+
+    const ref = `TX-DSH-${Math.floor(100000 + Math.random() * 900000)}`;
+    const newTx: Transaction = {
+      id: `tx-${Date.now()}`,
+      type: 'transfer',
+      title: `Transfer to ${transferRecipientName || transferRecipientAcc}`,
+      titleAm: `ወደ ${transferRecipientName || transferRecipientAcc} የተደረገ ዝውውር`,
+      amount: amountNum,
+      currency: sourceAccount.currency,
+      date: new Date().toISOString().replace('T', ' ').slice(0, 16),
+      category: 'Transfer',
+      categoryAm: 'የገንዘብ ዝውውር',
+      fromAccountId: sourceAccount.id,
+      recipientName: transferRecipientName || 'Bank Account',
+      recipientAccount: transferRecipientAcc,
+      recipientBank: transferBank,
+      status: 'completed',
+      referenceNo: ref,
+      note: transferNote || (lang === 'am' ? 'መደበኛ የባንክ ዝውውር' : 'Standard bank transfer'),
+    };
+
+    setAccounts((prev) =>
+      prev.map((acc) => (acc.id === sourceAccount.id ? { ...acc, balance: acc.balance - amountNum } : acc))
+    );
+    setTransactions((prev) => [newTx, ...prev]);
+
+    setIsTransferModalOpen(false);
+    setTransferAmount('');
+    setTransferRecipientAcc('');
+    setTransferRecipientName('');
+    setTransferNote('');
+    setTransferPin('');
+    setSelectedReceipt(newTx);
+    showToast(
+      lang === 'am'
+        ? `የ ${amountNum.toLocaleString()} ብር ዝውውር በተሳካ ሁኔታ ተፈጽሟል! ማረጋገጫ ቁጥር: ${ref}`
+        : `Transfer of ${amountNum.toLocaleString()} ETB completed successfully! Ref: ${ref}`
+    );
+  };
+
+  const handleAddCustomTransaction = (e: React.FormEvent) => {
+    e.preventDefault();
+    const amountNum = parseFloat(newTxAmount);
+    if (isNaN(amountNum) || amountNum <= 0 || !newTxTitle.trim()) return;
+
+    const targetAccount = accounts.find((a) => a.id === newTxAccount) || accounts[0];
+    const ref = `TX-REC-${Math.floor(100000 + Math.random() * 900000)}`;
+
+    const newTx: Transaction = {
+      id: `tx-${Date.now()}`,
+      type: newTxType,
+      title: newTxTitle,
+      titleAm: newTxTitle,
+      amount: amountNum,
+      currency: 'ETB',
+      date: new Date().toISOString().replace('T', ' ').slice(0, 16),
+      category: newTxCategory,
+      categoryAm: newTxCategory,
+      fromAccountId: targetAccount.id,
+      status: 'completed',
+      referenceNo: ref,
+      note: 'Direct ledger entry',
+    };
+
+    setAccounts((prev) =>
+      prev.map((acc) => {
+        if (acc.id !== targetAccount.id) return acc;
+        if (newTxType === 'income') {
+          return { ...acc, balance: acc.balance + amountNum };
+        } else {
+          return { ...acc, balance: Math.max(0, acc.balance - amountNum) };
+        }
+      })
+    );
+
+    setTransactions((prev) => [newTx, ...prev]);
+    setIsAddTxModalOpen(false);
+    setNewTxTitle('');
+    setNewTxAmount('');
+    showToast(
+      lang === 'am' ? 'አዲስ የሂሳብ እንቅስቃሴ በተሳካ ሁኔታ ተመዝግቧል!' : 'Transaction recorded successfully!'
+    );
+  };
+
+  const handleImportSampleStatement = () => {
+    const sampleTxs: Transaction[] = [
+      {
+        id: `tx-imp-1`,
+        type: 'income',
+        title: 'Customer Direct Wire - Alsam Plaza',
+        titleAm: 'የደንበኛ ቀጥታ ባንክ ገቢ - አልሳም ፕላዛ',
+        amount: 85000,
+        currency: 'ETB',
+        date: '2026-10-08 09:14',
+        category: 'Client Revenue',
+        categoryAm: 'የደንበኛ ገቢ',
+        fromAccountId: 'acc-1',
+        recipientName: 'Alsam Trading PLC',
+        status: 'completed',
+        referenceNo: 'TX-DSH-990112',
+      },
+      {
+        id: `tx-imp-2`,
+        type: 'expense',
+        title: 'Supplier Settlement - Hardware',
+        titleAm: 'ለአቅራቢ የተከፈለ - የቢሮ እቃዎች',
+        amount: 32500,
+        currency: 'ETB',
+        date: '2026-10-08 10:20',
+        category: 'Supplies',
+        categoryAm: 'ዕቃዎችና ግብይት',
+        fromAccountId: 'acc-1',
+        recipientName: 'Bole Tech Importers',
+        status: 'completed',
+        referenceNo: 'TX-DSH-448102',
+      },
+      {
+        id: `tx-imp-3`,
+        type: 'income',
+        title: 'POS Terminal Daily Settlement',
+        titleAm: 'የካርድ መክፈያ (POS) የቀኑ ገቢ ማጠቃለያ',
+        amount: 47200,
+        currency: 'ETB',
+        date: '2026-10-08 11:45',
+        category: 'POS Sales',
+        categoryAm: 'የPOS ሽያጭ ገቢ',
+        fromAccountId: 'acc-1',
+        recipientName: 'Dashen POS Terminal #81',
+        status: 'completed',
+        referenceNo: 'TX-POS-552190',
+      },
+    ];
+
+    setTransactions((prev) => [...sampleTxs, ...prev]);
+    const netImp = 85000 + 47200 - 32500;
+    setAccounts((prev) =>
+      prev.map((a) => (a.id === 'acc-1' ? { ...a, balance: a.balance + netImp } : a))
+    );
+
+    setIsImportStatementModalOpen(false);
+    showToast(
+      lang === 'am'
+        ? `3 አዳዲስ የቀጥታ ባንክ እንቅስቃሴዎች እና የተጣራ +${netImp.toLocaleString()} ብር ገቢ ተጭኗል!`
+        : `3 live transactions imported and +${netImp.toLocaleString()} ETB credited to Dashen Bank!`
+    );
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-amber-500 selection:text-black">
+      {/* Toast Alert */}
+      {toastMessage && (
+        <div className="fixed top-5 right-5 z-50 bg-emerald-600 text-white px-5 py-3 rounded-xl shadow-2xl flex items-center space-x-3 border border-emerald-400/40">
+          <CheckCircle2 className="w-5 h-5 flex-shrink-0" />
+          <span className="text-sm font-medium">{toastMessage}</span>
+        </div>
+      )}
+
+      {/* Online & Live Status Banner with Direct Install/Download Trigger */}
+      <div className="bg-emerald-950/80 border-b border-emerald-800/60 px-4 py-2.5 text-xs flex flex-wrap items-center justify-between gap-2 text-emerald-200">
+        <div className="flex items-center space-x-2">
+          <span className="relative flex h-2.5 w-2.5">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+          </span>
+          <span className="font-semibold">
+            {lang === 'am' ? 'መተግበሪያው አሁን ኦንላይን ሆኗል (Live Online)' : 'Application is Deployed & Live Online'}
+          </span>
+          <span className="hidden md:inline text-emerald-400/60">|</span>
+          <span className="hidden md:inline text-emerald-300">
+            {lang === 'am' ? 'ያለምንም ክፍያ በቀጥታ ስልክዎ ላይ ይጫኑ' : 'Zero cost - Install directly on phone or PC'}
+          </span>
+        </div>
+
+        <div className="flex items-center space-x-2">
+          {/* Direct External Link */}
+          <a
+            href={LIVE_DEPLOYED_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-2.5 py-1 rounded-lg bg-emerald-900/80 hover:bg-emerald-800 text-emerald-200 border border-emerald-700/60 font-medium transition flex items-center space-x-1 text-[11px]"
+          >
+            <ExternalLink className="w-3.5 h-3.5" />
+            <span>{lang === 'am' ? 'በአዲስ ገጽ ክፈት' : 'Open Full Tab'}</span>
+          </a>
+
+          {/* Download / Install App Trigger */}
+          <button
+            onClick={handleInstallClick}
+            className="px-3 py-1 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold transition flex items-center space-x-1.5 shadow-md text-[11px]"
+          >
+            <Download className="w-3.5 h-3.5" />
+            <span>{lang === 'am' ? 'መተግበሪያውን ጫን (Install Free)' : 'Install Free App'}</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Top Navigation */}
+      <header className="sticky top-0 z-40 bg-slate-900/90 backdrop-blur-md border-b border-slate-800">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 to-amber-700 flex items-center justify-center shadow-lg shadow-amber-900/30">
+              <Building2 className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <div className="flex items-center space-x-2">
+                <span className="font-bold text-lg text-white tracking-tight">BirrFlow Live</span>
+                <span className="text-[10px] uppercase font-semibold bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-500/30 flex items-center space-x-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                  <span>{lang === 'am' ? 'ቀጥታ ንቁ' : 'Live Sync'}</span>
+                </span>
+              </div>
+              <p className="text-xs text-slate-400">
+                {lang === 'am' ? 'የዳሽን ባንክ የቀጥታ ገንዘብ፣ ገቢ እና ወጪ መቆጣጠሪያ' : 'Live Cash Flow & Real-time Bank Overview'}
+              </p>
+            </div>
+          </div>
+
+          {/* Navigation Tabs */}
+          <nav className="hidden md:flex items-center space-x-1 bg-slate-800/80 p-1 rounded-xl border border-slate-700/60">
+            <button
+              onClick={() => setActiveTab('dashboard')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
+                activeTab === 'dashboard' ? 'bg-amber-500 text-slate-950 font-semibold' : 'text-slate-300 hover:text-white'
+              }`}
+            >
+              {lang === 'am' ? 'ቀጥታ ዳሽቦርድ' : 'Live Dashboard'}
+            </button>
+            <button
+              onClick={() => setActiveTab('analytics')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center space-x-1 ${
+                activeTab === 'analytics' ? 'bg-amber-500 text-slate-950 font-semibold' : 'text-slate-300 hover:text-white'
+              }`}
+            >
+              <TrendingUp className="w-3.5 h-3.5" />
+              <span>{lang === 'am' ? 'የገቢና ወጪ ትንታኔ' : 'Cash Flow & Analytics'}</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('transactions')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
+                activeTab === 'transactions' ? 'bg-amber-500 text-slate-950 font-semibold' : 'text-slate-300 hover:text-white'
+              }`}
+            >
+              {lang === 'am' ? 'እንቅስቃሴዎች' : 'Transactions'}
+            </button>
+            <button
+              onClick={() => setActiveTab('security')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center space-x-1 ${
+                activeTab === 'security' ? 'bg-amber-500 text-slate-950 font-semibold' : 'text-slate-300 hover:text-white'
+              }`}
+            >
+              <ShieldCheck className="w-3.5 h-3.5" />
+              <span>{lang === 'am' ? 'የደህንነት ደንብ' : 'Security Guide'}</span>
+            </button>
+          </nav>
+
+          {/* Right Tools */}
+          <div className="flex items-center space-x-2.5">
+            {/* Quick Live Refresh Button */}
+            <button
+              onClick={handleManualSync}
+              disabled={isSyncing}
+              title={lang === 'am' ? 'አሁን አድስ' : 'Refresh live data'}
+              className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-400 border border-slate-700 transition flex items-center space-x-1 text-xs"
+            >
+              <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin text-amber-300' : ''}`} />
+              <span className="hidden sm:inline font-mono text-[11px]">{lastSyncTime}</span>
+            </button>
+
+            {/* Show/Hide Balance Toggle */}
+            <button
+              onClick={() => setShowBalances(!showBalances)}
+              title={showBalances ? 'Hide amounts' : 'Show amounts'}
+              className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition border border-slate-700"
+            >
+              {showBalances ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4 text-amber-400" />}
+            </button>
+
+            {/* Language Switcher */}
+            <button
+              onClick={() => setLang(lang === 'am' ? 'en' : 'am')}
+              className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-amber-400 border border-slate-700 transition"
+            >
+              <span>{lang === 'am' ? '🇬🇧 English' : '🇪🇹 አማርኛ'}</span>
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {/* Main Content Area */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 w-full space-y-6">
+        {/* Real-time Status & Sync Bar */}
+        <div className="bg-gradient-to-r from-slate-900 via-amber-950/20 to-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-lg">
+          <div className="flex items-center space-x-3">
+            <div className="w-3 h-3 rounded-full bg-emerald-500 animate-ping" />
+            <div>
+              <div className="flex items-center space-x-2">
+                <span className="text-sm font-bold text-white">
+                  {lang === 'am' ? 'ቀጥታ የባንክ እና የጥሬ ገንዘብ ፍሰት ማመሳከሪያ' : 'Live Bank & Direct Cash Flow Monitor'}
+                </span>
+                <span className="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded-full border border-slate-700">
+                  {lang === 'am' ? `የመጨረሻ ዝመና፦ ${lastSyncTime}` : `Last sync: ${lastSyncTime}`}
+                </span>
+              </div>
+              <p className="text-xs text-slate-400 mt-0.5">
+                {lang === 'am'
+                  ? 'በባንኩ ያለውን ትክክለኛ ቀሪ ሂሳብ፣ ወጪዎችን እና ገቢዎችን በቀጥታ እዚህ መቆጣጠር እና ማስተካከል ይችላሉ።'
+                  : 'Monitor and adjust your real-time bank ledger, direct customer deposits, and outgoing operational expenses.'}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center space-x-2 w-full md:w-auto justify-end">
+            <button
+              onClick={() => {
+                setTargetAccountId('acc-1');
+                setNewBalanceInput(dashenAccount.balance.toString());
+                setIsSetBalanceModalOpen(true);
+              }}
+              className="px-3 py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 text-xs font-semibold transition flex items-center space-x-1.5"
+            >
+              <Sliders className="w-3.5 h-3.5" />
+              <span>{lang === 'am' ? 'ትክክለኛውን ሂሳብ አስተካክል' : 'Set Exact Balance'}</span>
+            </button>
+
+            <button
+              onClick={() => setIsImportStatementModalOpen(true)}
+              className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold transition flex items-center space-x-1.5"
+            >
+              <Upload className="w-3.5 h-3.5 text-slate-400" />
+              <span>{lang === 'am' ? 'እስቴትመንት ጫን' : 'Import Statement'}</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Dashboard View */}
+        {activeTab === 'dashboard' && (
+          <div className="space-y-6">
+            {/* Primary KPI Metric Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="bg-gradient-to-br from-amber-950/60 to-slate-900 p-5 rounded-2xl border border-amber-500/40 shadow-xl relative overflow-hidden">
+                <div className="flex items-center justify-between text-amber-300 text-xs font-bold uppercase tracking-wider">
+                  <span>{lang === 'am' ? 'ዳሽን ባንክ (አሁን ያለው ገንዘብ)' : 'Dashen Bank (Current)'}</span>
+                  <Building2 className="w-4 h-4 text-amber-400" />
+                </div>
+                <div className="mt-2 text-2xl font-black tracking-tight text-white">
+                  {formatMoney(dashenAccount.balance)}
+                </div>
+                <div className="mt-2 flex items-center justify-between text-[11px] text-slate-400">
+                  <span className="font-mono">{dashenAccount.accountNumber}</span>
+                  <button
+                    onClick={() => {
+                      setTargetAccountId(dashenAccount.id);
+                      setNewBalanceInput(dashenAccount.balance.toString());
+                      setIsSetBalanceModalOpen(true);
+                    }}
+                    className="text-amber-400 hover:underline font-semibold"
+                  >
+                    {lang === 'am' ? 'ቀይር' : 'Edit'}
+                  </button>
+                </div>
+              </div>
+
+              <div className="bg-slate-900/90 p-5 rounded-2xl border border-slate-800 shadow-md">
+                <div className="flex items-center justify-between text-slate-400 text-xs font-medium">
+                  <span>{lang === 'am' ? 'ጠቅላላ የሁሉም ባንኮች ድምር' : 'Total Portfolio Balance'}</span>
+                  <Wallet className="w-4 h-4 text-amber-400" />
+                </div>
+                <div className="mt-2 text-2xl font-bold tracking-tight text-white">
+                  {formatMoney(totalBalance)}
+                </div>
+                <p className="text-[11px] text-slate-400 mt-1 flex items-center space-x-1">
+                  <span>{accounts.length} {lang === 'am' ? 'ባንኮችና ዋሌቶች' : 'Accounts & Wallets'}</span>
+                </p>
+              </div>
+
+              <div className="bg-slate-900/90 p-5 rounded-2xl border border-slate-800 shadow-md">
+                <div className="flex items-center justify-between text-slate-400 text-xs font-medium">
+                  <span>{lang === 'am' ? 'የገባ ገቢ (Inflow)' : 'Total Inflow (Deposits)'}</span>
+                  <ArrowDownLeft className="w-4 h-4 text-emerald-400" />
+                </div>
+                <div className="mt-2 text-2xl font-bold tracking-tight text-emerald-400">
+                  +{formatMoney(totalIncome)}
+                </div>
+                <p className="text-[11px] text-emerald-500/90 mt-1">
+                  {transactions.filter((t) => t.type === 'income').length} {lang === 'am' ? 'የገቢ ግብይቶች' : 'income deposits'}
+                </p>
+              </div>
+
+              <div className="bg-slate-900/90 p-5 rounded-2xl border border-slate-800 shadow-md">
+                <div className="flex items-center justify-between text-slate-400 text-xs font-medium">
+                  <span>{lang === 'am' ? 'የወጣ ወጪ (Outflow)' : 'Total Outflow (Expenses)'}</span>
+                  <ArrowUpRight className="w-4 h-4 text-rose-400" />
+                </div>
+                <div className="mt-2 text-2xl font-bold tracking-tight text-rose-400">
+                  -{formatMoney(totalExpense)}
+                </div>
+                <p className="text-[11px] text-rose-400/80 mt-1">
+                  {lang === 'am' ? 'የተጣራ ትርፍ፦' : 'Net Flow:'} {formatMoney(netCashFlow)}
+                </p>
+              </div>
+            </div>
+
+            {/* Inflow vs Outflow Visual Bar */}
+            <div className="bg-slate-900 rounded-2xl border border-slate-800 p-5 space-y-3">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                <div>
+                  <h3 className="text-sm font-bold text-white flex items-center space-x-2">
+                    <TrendingUp className="w-4 h-4 text-emerald-400" />
+                    <span>{lang === 'am' ? 'የቀጥታ ገቢ እና ወጪ ንፅፅር ፍሰት' : 'Live Inflow vs Outflow Cash Comparison'}</span>
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    {lang === 'am'
+                      ? 'ገቢው ከወጪው በምን ያህል መጠን እንደሚበልጥ በቀጥታ የሚያሳይ'
+                      : 'Real-time liquidity margin and operational cash retention'}
+                  </p>
+                </div>
+                <div className="flex items-center space-x-3 text-xs">
+                  <div className="flex items-center space-x-1.5 text-emerald-400 font-semibold">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                    <span>{lang === 'am' ? 'ገቢ' : 'Inflow'}: {Math.round((totalIncome / Math.max(1, totalIncome + totalExpense)) * 100)}%</span>
+                  </div>
+                  <div className="flex items-center space-x-1.5 text-rose-400 font-semibold">
+                    <span className="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
+                    <span>{lang === 'am' ? 'ወጪ' : 'Outflow'}: {Math.round((totalExpense / Math.max(1, totalIncome + totalExpense)) * 100)}%</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="w-full h-3.5 bg-slate-950 rounded-full overflow-hidden flex p-0.5 border border-slate-800">
+                <div
+                  className="h-full bg-gradient-to-r from-emerald-600 to-emerald-400 rounded-l-full transition-all duration-700"
+                  style={{
+                    width: `${Math.round((totalIncome / Math.max(1, totalIncome + totalExpense)) * 100)}%`,
+                  }}
+                />
+                <div
+                  className="h-full bg-gradient-to-r from-rose-500 to-rose-600 rounded-r-full transition-all duration-700"
+                  style={{
+                    width: `${Math.round((totalExpense / Math.max(1, totalIncome + totalExpense)) * 100)}%`,
+                  }}
+                />
+              </div>
+
+              <div className="flex items-center justify-between text-xs text-slate-400 pt-1">
+                <span>{lang === 'am' ? 'የገቢ ድምር፦' : 'Total Inflow:'} +{totalIncome.toLocaleString()} ETB</span>
+                <span className={netCashFlow >= 0 ? 'text-emerald-400 font-bold' : 'text-rose-400 font-bold'}>
+                  {lang === 'am' ? 'የተጣራ የጥሬ ገንዘብ ትርፍ፦' : 'Net Liquidity Margin:'} {netCashFlow > 0 ? '+' : ''}{netCashFlow.toLocaleString()} ETB
+                </span>
+                <span>{lang === 'am' ? 'የወጪ ድምር፦' : 'Total Outflow:'} -{totalExpense.toLocaleString()} ETB</span>
+              </div>
+            </div>
+
+            {/* Quick Action Shortcuts */}
+            <div className="bg-slate-900 p-4 rounded-2xl border border-slate-800 flex flex-wrap items-center justify-between gap-3">
+              <span className="text-xs font-semibold text-slate-300">
+                {lang === 'am' ? 'ፈጣን የገንዘብ እንቅስቃሴ መመዝገቢያ' : 'Direct Action Controls'}:
+              </span>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  onClick={() => setIsTransferModalOpen(true)}
+                  className="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold text-xs transition flex items-center space-x-1.5 shadow-lg shadow-amber-500/20"
+                >
+                  <ArrowLeftRight className="w-4 h-4" />
+                  <span>{lang === 'am' ? 'ገንዘብ አስተላልፍ' : 'Simulate Transfer'}</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setNewTxType('income');
+                    setIsAddTxModalOpen(true);
+                  }}
+                  className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs transition flex items-center space-x-1.5"
+                >
+                  <PlusCircle className="w-4 h-4" />
+                  <span>{lang === 'am' ? 'አዲስ ገቢ መዝግብ' : 'Add Direct Income'}</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setNewTxType('expense');
+                    setIsAddTxModalOpen(true);
+                  }}
+                  className="px-3.5 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-semibold text-xs transition flex items-center space-x-1.5"
+                >
+                  <DollarSign className="w-4 h-4" />
+                  <span>{lang === 'am' ? 'አዲስ ወጪ መዝግብ' : 'Add Direct Expense'}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Account Cards Grid */}
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-sm font-bold text-white flex items-center space-x-2">
+                  <CreditCard className="w-4 h-4 text-amber-500" />
+                  <span>{lang === 'am' ? 'የተያያዙ የባንክ ሂሳቦች ዝርዝር' : 'Connected Bank Ledgers'}</span>
+                </h2>
+                <button
+                  onClick={() => {
+                    setTargetAccountId('acc-1');
+                    setNewBalanceInput(dashenAccount.balance.toString());
+                    setIsSetBalanceModalOpen(true);
+                  }}
+                  className="text-xs text-amber-400 hover:text-amber-300 font-semibold"
+                >
+                  {lang === 'am' ? '+ ሂሳብ አስተካክል' : 'Adjust Balances'}
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                {accounts.map((acc) => (
+                  <div
+                    key={acc.id}
+                    className={`p-5 rounded-2xl bg-gradient-to-br ${acc.cardColor} text-white shadow-xl relative overflow-hidden flex flex-col justify-between h-48 border border-white/10`}
+                  >
+                    <div className="flex items-start justify-between relative z-10">
+                      <div>
+                        <p className="text-[11px] uppercase tracking-wider text-white/80 font-medium">
+                          {acc.bankName}
+                        </p>
+                        <h4 className="font-bold text-sm text-white mt-0.5">
+                          {lang === 'am' ? acc.nameAm : acc.name}
+                        </h4>
+                      </div>
+                      <div className="w-8 h-8 rounded-lg bg-white/20 backdrop-blur-md flex items-center justify-center">
+                        {acc.type === 'checking' && <Building2 className="w-4 h-4 text-white" />}
+                        {acc.type === 'savings' && <Lock className="w-4 h-4 text-white" />}
+                        {acc.type === 'wallet' && <Smartphone className="w-4 h-4 text-white" />}
+                        {acc.type === 'cash' && <Wallet className="w-4 h-4 text-white" />}
+                      </div>
+                    </div>
+
+                    <div className="relative z-10 my-2">
+                      <p className="text-xs text-white/70">
+                        {lang === 'am' ? 'አሁን ያለው ቀሪ ገንዘብ' : 'Current Balance'}
+                      </p>
+                      <p className="text-2xl font-bold tracking-tight text-white mt-0.5">
+                        {formatMoney(acc.balance, acc.currency)}
+                      </p>
+                    </div>
+
+                    <div className="flex items-center justify-between text-xs text-white/80 border-t border-white/20 pt-2 relative z-10">
+                      <span className="font-mono tracking-wider">{acc.accountNumber}</span>
+                      <div className="flex items-center space-x-1.5">
+                        <button
+                          onClick={() => {
+                            setTargetAccountId(acc.id);
+                            setNewBalanceInput(acc.balance.toString());
+                            setIsSetBalanceModalOpen(true);
+                          }}
+                          className="text-[10px] bg-black/30 hover:bg-black/50 px-2 py-0.5 rounded transition font-medium text-white"
+                        >
+                          {lang === 'am' ? 'አስተካክል' : 'Edit'}
+                        </button>
+                        <button
+                          onClick={() => {
+                            setTransferFrom(acc.id);
+                            setIsTransferModalOpen(true);
+                          }}
+                          className="text-[10px] bg-white/20 hover:bg-white/30 px-2 py-0.5 rounded transition font-medium"
+                        >
+                          {lang === 'am' ? 'አስተላልፍ' : 'Send'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Live Transactions Table Feed */}
+            <div className="bg-slate-900 rounded-2xl border border-slate-800 p-5 space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+                  <h3 className="font-bold text-white text-sm">
+                    {lang === 'am' ? 'የቀጥታ የገቢ እና ወጪ እንቅስቃሴዎች' : 'Real-time Inflow & Outflow Activity'}
+                  </h3>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => setActiveTab('transactions')}
+                    className="text-xs text-amber-400 hover:text-amber-300 font-medium"
+                  >
+                    {lang === 'am' ? 'ሙሉ መዝገብ ይመልከቱ →' : 'Full Ledger →'}
+                  </button>
+                </div>
+              </div>
+
+              <div className="divide-y divide-slate-800/80">
+                {transactions.slice(0, 6).map((tx) => (
+                  <div
+                    key={tx.id}
+                    onClick={() => setSelectedReceipt(tx)}
+                    className="py-3 flex items-center justify-between hover:bg-slate-800/40 px-2 rounded-xl transition cursor-pointer"
+                  >
+                    <div className="flex items-center space-x-3">
+                      <div
+                        className={`w-9 h-9 rounded-xl flex items-center justify-center ${
+                          tx.type === 'income'
+                            ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                            : tx.type === 'transfer'
+                            ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                            : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                        }`}
+                      >
+                        {tx.type === 'income' && <ArrowDownLeft className="w-4 h-4" />}
+                        {tx.type === 'transfer' && <ArrowLeftRight className="w-4 h-4" />}
+                        {(tx.type === 'expense' || tx.type === 'bill') && <ArrowUpRight className="w-4 h-4" />}
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold text-white">
+                          {lang === 'am' ? tx.titleAm : tx.title}
+                        </p>
+                        <div className="flex items-center space-x-2 text-[11px] text-slate-400 mt-0.5">
+                          <span>{tx.date}</span>
+                          <span>•</span>
+                          <span className="font-mono text-slate-500">{tx.referenceNo}</span>
+                          {tx.recipientName && (
+                            <>
+                              <span>•</span>
+                              <span className="text-slate-300">{tx.recipientName}</span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="text-right">
+                      <p
+                        className={`text-xs font-bold ${
+                          tx.type === 'income' ? 'text-emerald-400' : 'text-slate-100'
+                        }`}
+                      >
+                        {tx.type === 'income' ? '+' : '-'}
+                        {formatMoney(tx.amount, tx.currency)}
+                      </p>
+                      <span className="text-[10px] text-slate-500 uppercase">
+                        {lang === 'am' ? tx.categoryAm : tx.category}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Analytics & Cash Flow View */}
+        {activeTab === 'analytics' && (
+          <div className="space-y-6">
+            <div className="bg-slate-900 rounded-2xl border border-slate-800 p-6 space-y-6">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-lg font-bold text-white">
+                    {lang === 'am' ? 'የፋይናንስ ፍሰት እና የገቢ/ወጪ ትንታኔ' : 'Cash Flow & Income / Expense Analytics'}
+                  </h2>
+                  <p className="text-xs text-slate-400 mt-1">
+                    {lang === 'am'
+                      ? 'የገንዘብዎን እንቅስቃሴ በየምድቡ እና በየባንኩ በቀጥታ ይከታተሉ'
+                      : 'Detailed financial performance, burn rate, and category distribution'}
+                  </p>
+                </div>
+
+                <div className="flex items-center space-x-2 bg-slate-800 p-1 rounded-xl text-xs">
+                  <button
+                    onClick={() => setTimeRange('month')}
+                    className={`px-3 py-1.5 rounded-lg font-medium transition ${
+                      timeRange === 'month' ? 'bg-amber-500 text-slate-950 font-bold' : 'text-slate-300'
+                    }`}
+                  >
+                    {lang === 'am' ? 'ይህ ወር' : 'This Month'}
+                  </button>
+                  <button
+                    onClick={() => setTimeRange('all')}
+                    className={`px-3 py-1.5 rounded-lg font-medium transition ${
+                      timeRange === 'all' ? 'bg-amber-500 text-slate-950 font-bold' : 'text-slate-300'
+                    }`}
+                  >
+                    {lang === 'am' ? 'ሁሉም ጊዜ' : 'All Time'}
+                  </button>
+                </div>
+              </div>
+
+              {/* KPI Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="bg-slate-950 p-4 rounded-xl border border-slate-800">
+                  <p className="text-xs text-slate-400">{lang === 'am' ? 'ጠቅላላ የተገኘ ገቢ' : 'Total Revenue'}</p>
+                  <p className="text-xl font-bold text-emerald-400 mt-1">+{formatMoney(totalIncome)}</p>
+                </div>
+                <div className="bg-slate-950 p-4 rounded-xl border border-slate-800">
+                  <p className="text-xs text-slate-400">{lang === 'am' ? 'ጠቅላላ የወጣ ወጪ' : 'Total Expenditure'}</p>
+                  <p className="text-xl font-bold text-rose-400 mt-1">-{formatMoney(totalExpense)}</p>
+                </div>
+                <div className="bg-slate-950 p-4 rounded-xl border border-slate-800">
+                  <p className="text-xs text-slate-400">{lang === 'am' ? 'የተጣራ ቀሪ (Net Margin)' : 'Net Retention'}</p>
+                  <p className="text-xl font-bold text-white mt-1">{formatMoney(netCashFlow)}</p>
+                </div>
+              </div>
+
+              {/* Category Breakdown */}
+              <div className="space-y-4 pt-4 border-t border-slate-800">
+                <h3 className="text-sm font-bold text-white">
+                  {lang === 'am' ? 'የወጪዎች ክፍፍል በየዘርፉ' : 'Expenditure by Category'}
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {budgets.map((b) => {
+                    const pct = Math.min(100, Math.round((b.spent / b.allocated) * 100));
+                    return (
+                      <div key={b.id} className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2">
+                        <div className="flex justify-between text-xs">
+                          <span className="font-semibold text-slate-200">
+                            {lang === 'am' ? b.categoryAm : b.category}
+                          </span>
+                          <span className="text-slate-400">{b.spent.toLocaleString()} ETB ({pct}%)</span>
+                        </div>
+                        <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                          <div className={`h-full ${b.color}`} style={{ width: `${pct}%` }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Transactions Ledger View */}
+        {activeTab === 'transactions' && (
+          <div className="bg-slate-900 rounded-2xl border border-slate-800 p-6 space-y-6">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div>
+                <h2 className="text-lg font-bold text-white">
+                  {lang === 'am' ? 'የፋይናንስ እንቅስቃሴዎች መዝገብ' : 'Transaction History & Ledger'}
+                </h2>
+                <p className="text-xs text-slate-400">
+                  {lang === 'am'
+                    ? 'ሁሉንም የተከናወኑ ክፍያዎች፣ ዝውውሮች እና ገቢዎች እዚህ መመልከት እና ሪሲት ማውጣት ይችላሉ'
+                    : 'Search, filter, inspect receipts and audit your banking history'}
+                </p>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => setIsTransferModalOpen(true)}
+                  className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold text-xs transition flex items-center space-x-1.5"
+                >
+                  <ArrowLeftRight className="w-4 h-4" />
+                  <span>{lang === 'am' ? 'አዲስ ዝውውር' : 'New Transfer'}</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 pt-2 border-t border-slate-800">
+              <div className="relative flex-1 max-w-md">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder={
+                    lang === 'am'
+                      ? 'በመግለጫ፣ በተቀባይ ወይም በማጣቀሻ ቁጥር ፈልግ...'
+                      : 'Search by title, recipient, reference...'
+                  }
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-4 py-2 text-xs text-white focus:outline-none focus:border-amber-500 transition"
+                />
+              </div>
+
+              <div className="flex items-center space-x-1 overflow-x-auto pb-1 md:pb-0">
+                {[
+                  { id: 'all', am: 'ሁሉም', en: 'All' },
+                  { id: 'transfer', am: 'ዝውውሮች', en: 'Transfers' },
+                  { id: 'income', am: 'ገቢዎች', en: 'Income' },
+                  { id: 'expense', am: 'ወጪዎች', en: 'Expenses' },
+                  { id: 'bill', am: 'ቢሎች', en: 'Bills' },
+                ].map((item) => (
+                  <button
+                    key={item.id}
+                    onClick={() => setFilterType(item.id)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition ${
+                      filterType === item.id
+                        ? 'bg-amber-500 text-slate-950 font-semibold'
+                        : 'bg-slate-800 text-slate-300 hover:text-white'
+                    }`}
+                  >
+                    {lang === 'am' ? item.am : item.en}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="border-b border-slate-800 text-slate-400 font-medium">
+                    <th className="py-3 px-3">{lang === 'am' ? 'ዝርዝር / መግለጫ' : 'Description'}</th>
+                    <th className="py-3 px-3">{lang === 'am' ? 'ዓይነት' : 'Type'}</th>
+                    <th className="py-3 px-3">{lang === 'am' ? 'መለያ ቁጥር' : 'Reference'}</th>
+                    <th className="py-3 px-3">{lang === 'am' ? 'ቀን' : 'Date'}</th>
+                    <th className="py-3 px-3 text-right">{lang === 'am' ? 'መጠን' : 'Amount'}</th>
+                    <th className="py-3 px-3 text-center">{lang === 'am' ? 'ሪሲት' : 'Receipt'}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800/60">
+                  {filteredTransactions.map((tx) => (
+                    <tr
+                      key={tx.id}
+                      className="hover:bg-slate-800/30 transition group cursor-pointer"
+                      onClick={() => setSelectedReceipt(tx)}
+                    >
+                      <td className="py-3 px-3">
+                        <div className="font-semibold text-white">
+                          {lang === 'am' ? tx.titleAm : tx.title}
+                        </div>
+                        {tx.recipientName && (
+                          <div className="text-[11px] text-slate-400">
+                            {tx.recipientName} {tx.recipientBank ? `(${tx.recipientBank})` : ''}
+                          </div>
+                        )}
+                      </td>
+                      <td className="py-3 px-3">
+                        <span
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase ${
+                            tx.type === 'income'
+                              ? 'bg-emerald-500/20 text-emerald-400'
+                              : tx.type === 'transfer'
+                              ? 'bg-amber-500/20 text-amber-400'
+                              : 'bg-rose-500/20 text-rose-400'
+                          }`}
+                        >
+                          {lang === 'am' ? tx.categoryAm : tx.category}
+                        </span>
+                      </td>
+                      <td className="py-3 px-3 font-mono text-slate-400 text-[11px]">
+                        {tx.referenceNo}
+                      </td>
+                      <td className="py-3 px-3 text-slate-400 whitespace-nowrap">
+                        {tx.date}
+                      </td>
+                      <td className="py-3 px-3 text-right font-bold whitespace-nowrap">
+                        <span className={tx.type === 'income' ? 'text-emerald-400' : 'text-slate-100'}>
+                          {tx.type === 'income' ? '+' : '-'}
+                          {formatMoney(tx.amount, tx.currency)}
+                        </span>
+                      </td>
+                      <td className="py-3 px-3 text-center">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedReceipt(tx);
+                          }}
+                          className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-amber-400 text-[11px] font-medium border border-slate-700 transition"
+                        >
+                          {lang === 'am' ? 'ይመልከቱ' : 'View'}
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              {filteredTransactions.length === 0 && (
+                <div className="py-12 text-center text-slate-500 text-sm">
+                  {lang === 'am' ? 'ምንም አይነት የተገኘ እንቅስቃሴ የለም' : 'No transactions matched your query.'}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Security & Compliance Guide */}
+        {activeTab === 'security' && (
+          <div className="bg-slate-900 rounded-2xl border border-slate-800 p-6 md:p-8 space-y-6">
+            <div className="flex items-center space-x-3">
+              <div className="p-3 rounded-2xl bg-amber-500/10 text-amber-400 border border-amber-500/30">
+                <ShieldCheck className="w-8 h-8" />
+              </div>
+              <div>
+                <h2 className="text-lg font-bold text-white">
+                  {lang === 'am'
+                    ? 'የዳሽን ባንክ እና የፋይናንስ ሥርዓቶች ህጋዊ የኤፒአይ ውህደት (API Integration) መመሪያ'
+                    : 'Dashen Bank & Financial Institutions Legitimate API Integration Architecture'}
+                </h2>
+                <p className="text-xs text-slate-400">
+                  {lang === 'am'
+                    ? 'የንግድ ድርጅቶች ከባንኩ ጋር የቀጥታ እንቅስቃሴዎችን ለማገናኘት የሚጠቀሙባቸው ህጋዊ መንገዶች'
+                    : 'Official corporate B2B channels, webhooks, and direct accounting integrations'}
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-slate-800 text-xs text-slate-300 leading-relaxed">
+              <div className="bg-slate-950 p-5 rounded-2xl border border-slate-800 space-y-3">
+                <h3 className="text-sm font-semibold text-amber-300 flex items-center space-x-2">
+                  <Zap className="w-4 h-4 text-amber-400" />
+                  <span>
+                    {lang === 'am' ? '1. የቀጥታ ዌብሁክ እና ኤፒአይ (Webhooks & APIs)' : '1. Webhooks & Real-time Callbacks'}
+                  </span>
+                </h3>
+                <p>
+                  {lang === 'am'
+                    ? 'የዳሽን ባንክ ደንበኞች በንግድ ድርጅት አካውንታቸው ላይ ገንዘብ ሲገባ ወይም ሲወጣ ቀጥታ ማሳወቂያ በስርዓታቸው ላይ እንዲመጣ ለማድረግ የባንኩን ይፋዊ የ B2B Webhook / Callback ኤፒአይ ይጠቀማሉ። ይህም ደንበኛው ክፍያ በፈጸመ በሰከንዶች ውስጥ በዳሽቦርዱ ላይ እንዲንፀባረቅ ያደርጋል።'
+                    : 'Corporate merchants subscribe to bank-signed Webhooks and REST Endpoints. When an inbound deposit or settlement occurs, an encrypted JSON payload notifies your backend server instantly.'}
+                </p>
+              </div>
+
+              <div className="bg-slate-950 p-5 rounded-2xl border border-slate-800 space-y-3">
+                <h3 className="text-sm font-semibold text-amber-300 flex items-center space-x-2">
+                  <Building2 className="w-4 h-4 text-amber-400" />
+                  <span>
+                    {lang === 'am' ? '2. የኢትዮswitch እና የቴሌብር ክፍያ ውህደት' : '2. EthSwitch & Telebirr Gateway'}
+                  </span>
+                </h3>
+                <p>
+                  {lang === 'am'
+                    ? 'በኢትዮጵያ ውስጥ ከሁሉም ባንኮች ጋር በአንድ ጊዜ ለመገናኘት ኢትዮswitch (EthSwitch) እና ቴሌብር ሱፐርአፕ ኤፒአይ (SuperApp API) ለንግድ ድርጅቶች የተፈቀደና የተመሰጠረ ህጋዊ ቻናል ያቀርባሉ።'
+                    : 'National payment rails such as EthSwitch and Telebirr Gateway support ISO 8583 and modern RESTful APIs to reconcile interbank transactions seamlessly.'}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+      </main>
+
+      {/* Free App Install & Direct Download Modal */}
+      {isInstallModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-lg w-full p-6 shadow-2xl relative text-slate-100 max-h-[90vh] overflow-y-auto">
+            <button
+              onClick={() => setIsInstallModalOpen(false)}
+              className="absolute top-5 right-5 text-slate-400 hover:text-white p-1 rounded-lg bg-slate-800/80"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="text-center pb-4 border-b border-slate-800">
+              <div className="w-14 h-14 mx-auto rounded-2xl bg-gradient-to-tr from-amber-500 to-amber-700 text-white flex items-center justify-center mb-3 shadow-lg shadow-amber-900/30">
+                <Download className="w-7 h-7" />
+              </div>
+              <h3 className="font-bold text-base text-white">
+                {lang === 'am' ? 'መተግበሪያውን በነፃ ስልክዎ/ኮምፒውተርዎ ላይ ይጫኑ' : 'Install BirrFlow App (100% Free)'}
+              </h3>
+              <p className="text-xs text-emerald-400 mt-1 font-semibold">
+                {lang === 'am' ? 'ያለ ምንም ክፍያ ወይም Play Store አካውንት በቀጥታ ይሰራል' : 'Progressive Web App - No App Store Required'}
+              </p>
+            </div>
+
+            <div className="py-4 space-y-4 text-xs">
+              {/* Option 1: Direct File Download */}
+              <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-2xl space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-amber-300 flex items-center space-x-1.5">
+                    <Download className="w-4 h-4" />
+                    <span>{lang === 'am' ? 'አማራጭ 1፦ የመተግበሪያ ፋይሉን አውርድ (Direct Download)' : 'Option 1: Download App Launcher File'}</span>
+                  </span>
+                  <span className="text-[10px] bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded-full font-semibold">
+                    {lang === 'am' ? 'ፈጣን' : 'Instant'}
+                  </span>
+                </div>
+                <p className="text-slate-300 leading-relaxed">
+                  {lang === 'am'
+                    ? 'ፋይሉን ስልክዎ ወይም ኮምፒውተርዎ ላይ በማውረድ በማንኛውም ሰዓት ልክ እንደ አፕሊኬሽን በቀጥታ መክፈት ይችላሉ።'
+                    : 'Download the standalone app launcher directly to your phone or desktop to launch with 1 click.'}
+                </p>
+                <button
+                  onClick={handleDownloadAppFile}
+                  className="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs transition flex items-center justify-center space-x-2 shadow-lg shadow-amber-500/20"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>{lang === 'am' ? 'የመተግበሪያውን ፋይል አሁኑኑ አውርድ (Download App File)' : 'Download App File Now'}</span>
+                </button>
+              </div>
+
+              {/* Option 2: Open in Real Browser for Native Install */}
+              <div className="p-4 bg-slate-950 border border-slate-800 rounded-2xl space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-white flex items-center space-x-1.5">
+                    <Globe className="w-4 h-4 text-emerald-400" />
+                    <span>{lang === 'am' ? 'አማራጭ 2፦ በሙሉ ብሮውዘር ላይ ክፈትና ጫን' : 'Option 2: Open in Full Browser to Install'}</span>
+                  </span>
+                </div>
+                <p className="text-slate-400 leading-relaxed text-[11px]">
+                  {lang === 'am'
+                    ? 'በዚህ ኤዲተር ውስጥ (Iframe) ብሮውዘሮች የኢንስታል ቁልፍን ሊገድቡ ስለሚችሉ፣ ከታች ያለውን በመጫን በሙሉ ብሮውዘር ላይ በቀጥታ ይክፈቱ፦'
+                    : 'Browsers restrict install dialogs inside preview iframes. Open the direct link in Chrome or Safari:'}
+                </p>
+
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                  <a
+                    href={LIVE_DEPLOYED_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs text-center transition flex items-center justify-center space-x-1.5"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                    <span>{lang === 'am' ? 'በቀጥታ ብሮውዘር ላይ ክፈት (Open in Browser)' : 'Open in New Tab'}</span>
+                  </a>
+                  <button
+                    onClick={handleCopyAppUrl}
+                    className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-medium text-xs transition flex items-center justify-center space-x-1.5"
+                  >
+                    {isCopiedUrl ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+                    <span>{isCopiedUrl ? (lang === 'am' ? 'ኮፒ ሆኗል' : 'Copied!') : (lang === 'am' ? 'ሊንኩን ኮፒ አድርግ' : 'Copy URL')}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Instructions for Android & iOS */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-slate-300">
+                <div className="p-3 bg-slate-950 rounded-xl border border-slate-800 space-y-1">
+                  <p className="font-bold text-white flex items-center space-x-1">
+                    <Smartphone className="w-3.5 h-3.5 text-amber-400" />
+                    <span>Android / Chrome:</span>
+                  </p>
+                  <p className="text-[11px] text-slate-400">
+                    {lang === 'am'
+                      ? 'Chrome ላይ 3 ነጥቦችን (⋮) ነክተው «Install App» ወይም «Add to Home screen» ይምረጡ።'
+                      : 'Tap 3 dots (⋮) in Chrome, select "Install App" or "Add to Home screen".'}
+                  </p>
+                </div>
+
+                <div className="p-3 bg-slate-950 rounded-xl border border-slate-800 space-y-1">
+                  <p className="font-bold text-white flex items-center space-x-1">
+                    <Smartphone className="w-3.5 h-3.5 text-blue-400" />
+                    <span>iPhone / Safari:</span>
+                  </p>
+                  <p className="text-[11px] text-slate-400">
+                    {lang === 'am'
+                      ? 'Safari ላይ የShare ምልክት (⎙) ነክተው «Add to Home Screen» የሚለውን ይጫኑ።'
+                      : 'Tap Share icon (⎙) in Safari, then select "Add to Home Screen".'}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setIsInstallModalOpen(false)}
+              className="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold transition text-xs"
+            >
+              {lang === 'am' ? 'ዝጋ (Close)' : 'Close'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Direct Balance Adjust Modal */}
+      {isSetBalanceModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-md w-full p-6 shadow-2xl relative">
+            <button
+              onClick={() => setIsSetBalanceModalOpen(false)}
+              className="absolute top-5 right-5 text-slate-400 hover:text-white p-1 rounded-lg bg-slate-800/80"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-center space-x-3 mb-4">
+              <div className="p-2.5 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                <Sliders className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-white">
+                  {lang === 'am' ? 'ትክክለኛውን የባንክ ቀሪ ገንዘብ ያስገቡ' : 'Direct Balance Adjustment'}
+                </h3>
+                <p className="text-xs text-slate-400">
+                  {lang === 'am' ? 'አሁን በባንክዎ ያለውን ትክክለኛ የብር መጠን ያስቀምጡ' : 'Synchronize your ledger with exact real-world balance'}
+                </p>
+              </div>
+            </div>
+
+            <form onSubmit={handleUpdateDirectBalance} className="space-y-4 text-xs">
+              <div>
+                <label className="block text-slate-300 font-medium mb-1">
+                  {lang === 'am' ? 'የሚስተካከለው ባንክ / ሂሳብ' : 'Select Bank / Account'}
+                </label>
+                <select
+                  value={targetAccountId}
+                  onChange={(e) => {
+                    setTargetAccountId(e.target.value);
+                    const selected = accounts.find((a) => a.id === e.target.value);
+                    if (selected) setNewBalanceInput(selected.balance.toString());
+                  }}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-white focus:outline-none focus:border-amber-500"
+                >
+                  {accounts.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {lang === 'am' ? a.nameAm : a.name} ({a.accountNumber})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-slate-300 font-medium mb-1">
+                  {lang === 'am' ? 'ትክክለኛ የቀሪ ገንዘብ መጠን (ብር)' : 'Exact Current Balance (ETB)'}
+                </label>
+                <input
+                  type="number"
+                  step="any"
+                  min="0"
+                  placeholder="e.g. 500000"
+                  value={newBalanceInput}
+                  onChange={(e) => setNewBalanceInput(e.target.value)}
+                  required
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-white text-base font-bold text-amber-400 focus:outline-none focus:border-amber-500"
+                />
+              </div>
+
+              <div className="p-3 bg-amber-500/10 rounded-xl border border-amber-500/20 text-slate-300 text-[11px]">
+                {lang === 'am'
+                  ? 'ይህ ለውጥ ወዲያውኑ በሁሉም የዳሽቦርዱ ስታቲስቲክሶች እና ገበታዎች ላይ በቀጥታ ይንፀባረቃል።'
+                  : 'This change updates all portfolio values, net margins, and generates a reconciliation entry.'}
+              </div>
+
+              <div className="flex items-center space-x-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsSetBalanceModalOpen(false)}
+                  className="w-1/2 py-2.5 rounded-xl bg-slate-800 text-slate-300 font-semibold"
+                >
+                  {lang === 'am' ? 'ይቅር' : 'Cancel'}
+                </button>
+                <button
+                  type="submit"
+                  className="w-1/2 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold transition shadow-lg shadow-amber-500/20"
+                >
+                  {lang === 'am' ? 'አሁን አዘምን' : 'Update Balance'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Statement Importer Modal */}
+      {isImportStatementModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-lg w-full p-6 shadow-2xl relative text-xs">
+            <button
+              onClick={() => setIsImportStatementModalOpen(false)}
+              className="absolute top-5 right-5 text-slate-400 hover:text-white p-1 rounded-lg bg-slate-800/80"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-center space-x-3 mb-4">
+              <div className="p-2.5 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                <Upload className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-white">
+                  {lang === 'am' ? 'የዳሽን ባንክ እስቴትመንት መጫኛ' : 'Bank Statement Import'}
+                </h3>
+                <p className="text-xs text-slate-400">
+                  {lang === 'am' ? 'የባንክ እንቅስቃሴዎችን በፋይል ወይም በናሙና መጫን' : 'Load transactions directly to update cash flow'}
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div className="p-4 rounded-xl border border-dashed border-slate-700 bg-slate-950/60 text-center space-y-2">
+                <FileText className="w-8 h-8 text-amber-500 mx-auto" />
+                <p className="text-slate-300 font-medium">
+                  {lang === 'am' ? 'የባንክ እስቴትመንት ፅሁፍ ወይም CSV እዚህ ይለጥፉ' : 'Paste statement text or CSV rows'}
+                </p>
+                <textarea
+                  rows={3}
+                  value={statementText}
+                  onChange={(e) => setStatementText(e.target.value)}
+                  placeholder="Date, Description, Ref, Amount, Type..."
+                  className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-white font-mono text-[11px] focus:outline-none"
+                />
+              </div>
+
+              <div className="p-3 bg-slate-800/60 rounded-xl border border-slate-700 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold text-white">
+                    {lang === 'am' ? 'የዳሽን ባንክ የቅርብ ጊዜ የናሙና እንቅስቃሴዎችን ጫን' : 'One-Click Live Demo Statement'}
+                  </span>
+                  <Sparkles className="w-4 h-4 text-amber-400" />
+                </div>
+                <p className="text-[11px] text-slate-400">
+                  {lang === 'am'
+                    ? 'የዛሬውን 3 እውነተኛ የዳሽን ባንክ ገቢ እና ወጪዎች (POS፣ Wire Transfer) ወዲያውኑ በመጫን ቀሪ ሂሳብዎን ያዘምኑ።'
+                    : 'Instantly append realistic Dashen Bank transactions (+132,200 ETB in deposits, -32,500 ETB expense) and recalculate live balances.'}
+                </p>
+                <button
+                  type="button"
+                  onClick={handleImportSampleStatement}
+                  className="w-full py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold transition flex items-center justify-center space-x-1.5 shadow-lg shadow-amber-500/20"
+                >
+                  <Upload className="w-4 h-4" />
+                  <span>{lang === 'am' ? 'የናሙና እስቴትመንቱን አሁን ጫን' : 'Load Demo Statement Now'}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Transfer Modal */}
+      {isTransferModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-lg w-full p-6 shadow-2xl relative">
+            <button
+              onClick={() => setIsTransferModalOpen(false)}
+              className="absolute top-5 right-5 text-slate-400 hover:text-white p-1 rounded-lg bg-slate-800/80"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-center space-x-3 mb-5">
+              <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center border border-amber-500/30">
+                <ArrowLeftRight className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-white">
+                  {lang === 'am' ? 'ገንዘብ ማስተላለፊያ ሳንድቦክስ' : 'Money Transfer Simulation'}
+                </h3>
+                <p className="text-xs text-slate-400">
+                  {lang === 'am' ? 'ደህንነቱ የተጠበቀ የሂሳብ ዝውውር መቆጣጠሪያ' : 'Execute verified simulated transfer'}
+                </p>
+              </div>
+            </div>
+
+            {transferError && (
+              <div className="mb-4 p-3 rounded-xl bg-rose-500/20 border border-rose-500/30 text-rose-300 text-xs flex items-center space-x-2">
+                <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                <span>{transferError}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleExecuteTransfer} className="space-y-4 text-xs">
+              <div>
+                <label className="block text-slate-300 font-medium mb-1">
+                  {lang === 'am' ? 'የመነሻ ሂሳብ ይምረጡ' : 'Source Account'}
+                </label>
+                <select
+                  value={transferFrom}
+                  onChange={(e) => setTransferFrom(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-white focus:outline-none focus:border-amber-500"
+                >
+                  {accounts.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {lang === 'am' ? a.nameAm : a.name} — {a.balance.toLocaleString()} {a.currency} ({a.accountNumber})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-300 font-medium mb-1">
+                    {lang === 'am' ? 'የተቀባይ ባንክ' : 'Destination Bank'}
+                  </label>
+                  <select
+                    value={transferBank}
+                    onChange={(e) => setTransferBank(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-white focus:outline-none focus:border-amber-500"
+                  >
+                    <option value="Dashen Bank">ዳሽን ባንክ (Dashen Bank)</option>
+                    <option value="Commercial Bank of Ethiopia">ንግድ ባንክ (CBE)</option>
+                    <option value="Awash Bank">አዋሽ ባንክ (Awash Bank)</option>
+                    <option value="Telebirr">ቴሌብር (Telebirr Wallet)</option>
+                    <option value="Abyssinia Bank">አቢሲኒያ ባንክ (Bank of Abyssinia)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-slate-300 font-medium mb-1">
+                    {lang === 'am' ? 'የተቀባይ ሂሳብ ቁጥር' : 'Recipient Account #'}
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. 5289-xxxx-xxxx"
+                    value={transferRecipientAcc}
+                    onChange={(e) => setTransferRecipientAcc(e.target.value)}
+                    required
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-white focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-slate-300 font-medium mb-1">
+                  {lang === 'am' ? 'የተቀባይ ሙሉ ስም' : 'Recipient Full Name'}
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. አቤል ተፈራ (Abel Tefera)"
+                  value={transferRecipientName}
+                  onChange={(e) => setTransferRecipientName(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-white focus:outline-none focus:border-amber-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-300 font-medium mb-1">
+                    {lang === 'am' ? 'የገንዘብ መጠን (ብር)' : 'Amount (ETB)'}
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    placeholder="e.g. 5000"
+                    value={transferAmount}
+                    onChange={(e) => setTransferAmount(e.target.value)}
+                    required
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-white text-sm font-bold focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-300 font-medium mb-1">
+                    {lang === 'am' ? 'የዝውውር ምክንያት' : 'Reason / Note'}
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Payment for invoice"
+                    value={transferNote}
+                    onChange={(e) => setTransferNote(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-white focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+              </div>
+
+              <div className="p-3 bg-amber-500/10 rounded-xl border border-amber-500/20">
+                <label className="block text-amber-200 font-semibold mb-1">
+                  {lang === 'am' ? 'የደህንነት ሚስጥር ቁጥር (4-Digit Security PIN)' : 'Authorize with Security PIN'}
+                </label>
+                <input
+                  type="password"
+                  maxLength={4}
+                  placeholder="••••"
+                  value={transferPin}
+                  onChange={(e) => setTransferPin(e.target.value)}
+                  required
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-center text-lg tracking-widest text-amber-400 focus:outline-none focus:border-amber-400"
+                />
+                <p className="text-[10px] text-slate-400 mt-1 text-center">
+                  {lang === 'am' ? 'ለሙከራ ማንኛውንም 4 አሃዝ (ለምሳሌ 1234) ማስገባት ይችላሉ' : 'Sandbox mode: Enter any 4 digits (e.g. 1234)'}
+                </p>
+              </div>
+
+              <div className="flex items-center space-x-3 pt-3">
+                <button
+                  type="button"
+                  onClick={() => setIsTransferModalOpen(false)}
+                  className="w-1/2 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold transition"
+                >
+                  {lang === 'am' ? 'ይቅር' : 'Cancel'}
+                </button>
+                <button
+                  type="submit"
+                  className="w-1/2 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold transition shadow-lg shadow-amber-500/30"
+                >
+                  {lang === 'am' ? 'አሁን አስተላልፍ' : 'Confirm & Transfer'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Add Custom Record Modal */}
+      {isAddTxModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-md w-full p-6 shadow-2xl relative">
+            <button
+              onClick={() => setIsAddTxModalOpen(false)}
+              className="absolute top-5 right-5 text-slate-400 hover:text-white p-1 rounded-lg bg-slate-800/80"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <h3 className="text-base font-bold text-white mb-4">
+              {newTxType === 'income'
+                ? lang === 'am'
+                  ? 'አዲስ ገቢ መዝግብ'
+                  : 'Record Direct Income'
+                : lang === 'am'
+                ? 'አዲስ ወጪ መዝግብ'
+                : 'Record Direct Expense'}
+            </h3>
+
+            <form onSubmit={handleAddCustomTransaction} className="space-y-4 text-xs">
+              <div>
+                <label className="block text-slate-300 font-medium mb-1">
+                  {lang === 'am' ? 'ሒሳብ ይምረጡ' : 'Select Account'}
+                </label>
+                <select
+                  value={newTxAccount}
+                  onChange={(e) => setNewTxAccount(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-white focus:outline-none focus:border-amber-500"
+                >
+                  {accounts.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {lang === 'am' ? a.nameAm : a.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-slate-300 font-medium mb-1">
+                  {lang === 'am' ? 'የክፍያው ርዕስ / መግለጫ' : 'Title / Description'}
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Daily Cash Sales or Office Supplies"
+                  value={newTxTitle}
+                  onChange={(e) => setNewTxTitle(e.target.value)}
+                  required
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-white focus:outline-none focus:border-amber-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-300 font-medium mb-1">
+                  {lang === 'am' ? 'መጠን (ብር)' : 'Amount (ETB)'}
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  placeholder="e.g. 10000"
+                  value={newTxAmount}
+                  onChange={(e) => setNewTxAmount(e.target.value)}
+                  required
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-white text-sm font-bold focus:outline-none focus:border-amber-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-300 font-medium mb-1">
+                  {lang === 'am' ? 'ምድብ' : 'Category'}
+                </label>
+                <select
+                  value={newTxCategory}
+                  onChange={(e) => setNewTxCategory(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-white focus:outline-none focus:border-amber-500"
+                >
+                  <option value="Sales / Revenue">ሽያጭና ገቢ (Revenue)</option>
+                  <option value="Client Deposit">የደንበኛ ተቀማጭ (Client Deposit)</option>
+                  <option value="Rent & Lease">ኪራይ (Rent)</option>
+                  <option value="Utilities">መብራትና ኢንተርኔት (Utilities)</option>
+                  <option value="Supplies">ቁሳቁስና ዕቃዎች (Supplies)</option>
+                  <option value="Miscellaneous">ሌሎች (Miscellaneous)</option>
+                </select>
+              </div>
+
+              <div className="flex items-center space-x-3 pt-3">
+                <button
+                  type="button"
+                  onClick={() => setIsAddTxModalOpen(false)}
+                  className="w-1/2 py-2.5 rounded-xl bg-slate-800 text-slate-300 font-semibold"
+                >
+                  {lang === 'am' ? 'ይቅር' : 'Cancel'}
+                </button>
+                <button
+                  type="submit"
+                  className="w-1/2 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold shadow-lg"
+                >
+                  {lang === 'am' ? 'መዝግብ' : 'Record'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Official Transaction Receipt Modal */}
+      {selectedReceipt && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-md w-full p-6 shadow-2xl relative text-slate-100">
+            <button
+              onClick={() => setSelectedReceipt(null)}
+              className="absolute top-5 right-5 text-slate-400 hover:text-white p-1 rounded-lg bg-slate-800/80"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="text-center pb-4 border-b border-dashed border-slate-700">
+              <div className="w-12 h-12 mx-auto rounded-2xl bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center mb-2">
+                <CheckCircle2 className="w-7 h-7 text-emerald-400" />
+              </div>
+              <h3 className="font-bold text-base text-white">
+                {lang === 'am' ? 'የክፍያ ማረጋገጫ ደረሰኝ' : 'Transaction Receipt'}
+              </h3>
+              <p className="text-xs text-emerald-400 font-semibold tracking-wider uppercase mt-0.5">
+                {lang === 'am' ? 'በተሳካ ሁኔታ ተጠናቋል' : 'Transaction Completed'}
+              </p>
+              <p className="text-2xl font-black text-white mt-2">
+                {selectedReceipt.amount.toLocaleString()} {selectedReceipt.currency}
+              </p>
+            </div>
+
+            <div className="py-4 space-y-2.5 text-xs">
+              <div className="flex justify-between">
+                <span className="text-slate-400">{lang === 'am' ? 'የማጣቀሻ ቁጥር' : 'Reference No'}:</span>
+                <span className="font-mono font-bold text-amber-400">{selectedReceipt.referenceNo}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400">{lang === 'am' ? 'ቀን እና ሰዓት' : 'Date & Time'}:</span>
+                <span className="text-slate-200">{selectedReceipt.date}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400">{lang === 'am' ? 'ዓይነት' : 'Type'}:</span>
+                <span className="text-slate-200 uppercase font-semibold">
+                  {lang === 'am' ? selectedReceipt.categoryAm : selectedReceipt.category}
+                </span>
+              </div>
+              {selectedReceipt.recipientName && (
+                <div className="flex justify-between">
+                  <span className="text-slate-400">{lang === 'am' ? 'ተቀባይ' : 'Recipient'}:</span>
+                  <span className="text-slate-200 font-medium">{selectedReceipt.recipientName}</span>
+                </div>
+              )}
+              {selectedReceipt.recipientAccount && (
+                <div className="flex justify-between">
+                  <span className="text-slate-400">{lang === 'am' ? 'የተቀባይ ሂሳብ' : 'Recipient Account'}:</span>
+                  <span className="font-mono text-slate-300">{selectedReceipt.recipientAccount}</span>
+                </div>
+              )}
+              {selectedReceipt.recipientBank && (
+                <div className="flex justify-between">
+                  <span className="text-slate-400">{lang === 'am' ? 'ተቀባይ ባንክ' : 'Bank'}:</span>
+                  <span className="text-slate-200">{selectedReceipt.recipientBank}</span>
+                </div>
+              )}
+              {selectedReceipt.note && (
+                <div className="flex justify-between">
+                  <span className="text-slate-400">{lang === 'am' ? 'ማስታወሻ' : 'Note'}:</span>
+                  <span className="text-slate-300 text-right">{selectedReceipt.note}</span>
+                </div>
+              )}
+            </div>
+
+            <div className="pt-4 border-t border-dashed border-slate-700 flex items-center space-x-2">
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(
+                    `BirrFlow Receipt: ${selectedReceipt.referenceNo}\nAmount: ${selectedReceipt.amount} ETB\nDate: ${selectedReceipt.date}\nStatus: SUCCESS`
+                  );
+                  showToast(lang === 'am' ? 'ደረሰኙ ኮፒ ተደርጓል!' : 'Receipt copied to clipboard!');
+                }}
+                className="flex-1 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 flex items-center justify-center space-x-1.5 transition"
+              >
+                <Share2 className="w-3.5 h-3.5" />
+                <span>{lang === 'am' ? 'ኮፒ አድርግ' : 'Share'}</span>
+              </button>
+              <button
+                onClick={() => window.print()}
+                className="flex-1 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold flex items-center justify-center space-x-1.5 transition shadow-lg shadow-amber-500/20"
+              >
+                <Printer className="w-3.5 h-3.5" />
+                <span>{lang === 'am' ? 'አትም (Print)' : 'Print'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Footer */}
+      <footer className="bg-slate-900 border-t border-slate-800 py-6 text-center text-xs text-slate-500">
+        <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div className="flex items-center space-x-2">
+            <Building2 className="w-4 h-4 text-amber-500" />
+            <span className="text-slate-300 font-semibold">BirrFlow Live Dashboard</span>
+            <span>—</span>
+            <span>{lang === 'am' ? 'የዳሽን ባንክ እና የንግድ ፋይናንስ ቀጥታ መቆጣጠሪያ' : 'Live Financial Flow & Cash Retention Engine'}</span>
+          </div>
+          <div className="flex items-center space-x-3">
+            <button
+              onClick={handleInstallClick}
+              className="text-emerald-400 hover:underline font-medium flex items-center space-x-1"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>{lang === 'am' ? 'በነፃ ጫን (Install App)' : 'Install Free'}</span>
+            </button>
+            <span>•</span>
+            <span>© 2026 BirrFlow</span>
+          </div>
+        </div>
+      </footer>
+    </div>
+  );
+}
